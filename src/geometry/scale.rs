@@ -18,23 +18,20 @@ use crate::base::{Const, DefaultAllocator, OMatrix, OVector, SVector, Scalar};
 
 use crate::geometry::Point;
 
-#[cfg(feature = "rkyv-serialize")]
-use rkyv::bytecheck;
-
 /// A scale which supports non-uniform scaling.
 #[repr(C)]
 #[cfg_attr(
     feature = "rkyv-serialize-no-std",
-    derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize),
-    archive(
-        as = "Scale<T::Archived, D>",
-        bound(archive = "
-        T: rkyv::Archive,
-        SVector<T, D>: rkyv::Archive<Archived = SVector<T::Archived, D>>
-    ")
+    derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, rkyv::Portable, bytecheck::CheckBytes),
+    rkyv(
+        as = Scale<T::Archived, D>,
+        archive_bounds(
+            T: rkyv::Archive,
+            SVector<T, D>: rkyv::Archive<Archived = SVector<T::Archived, D>>
+        )
+    
     )
 )]
-#[cfg_attr(feature = "rkyv-serialize", derive(bytecheck::CheckBytes))]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 #[derive(Copy, Clone)]
 pub struct Scale<T, const D: usize> {
@@ -321,7 +318,7 @@ impl<T: Scalar + Eq, const D: usize> Eq for Scale<T, D> {}
 
 impl<T: Scalar + PartialEq, const D: usize> PartialEq for Scale<T, D> {
     #[inline]
-    fn eq(&self, right: &Scale<T, D>) -> bool {
+    fn eq(&self, right: &Self) -> bool {
         self.vector == right.vector
     }
 }

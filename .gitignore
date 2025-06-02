@@ -11,3 +11,4 @@ site/
 .vscode/
 .idea/
 proptest-regressions
+.direnv

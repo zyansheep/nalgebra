@@ -14,9 +14,6 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 #[cfg(feature = "serde-serialize-no-std")]
 use std::marker::PhantomData;
 
-#[cfg(feature = "rkyv-serialize")]
-use rkyv::bytecheck;
-
 use crate::Storage;
 use crate::base::Scalar;
 use crate::base::allocator::Allocator;
@@ -35,16 +32,16 @@ use std::mem;
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(
     feature = "rkyv-serialize-no-std",
-    derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize),
-    archive(
-        as = "ArrayStorage<T::Archived, R, C>",
-        bound(archive = "
-        T: rkyv::Archive,
-        [[T; R]; C]: rkyv::Archive<Archived = [[T::Archived; R]; C]>
-    ")
+    derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, rkyv::Portable, bytecheck::CheckBytes),
+    rkyv(
+        as = ArrayStorage<T::Archived, R, C>,
+        archive_bounds(
+            T: rkyv::Archive,
+            [[T; R]; C]: rkyv::Archive<Archived = [[T::Archived; R]; C]>,
+            <T as rkyv::Archive>::Archived: rkyv::Portable
+        )
     )
 )]
-#[cfg_attr(feature = "rkyv-serialize", derive(bytecheck::CheckBytes))]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct ArrayStorage<T, const R: usize, const C: usize>(pub [[T; R]; C]);
 

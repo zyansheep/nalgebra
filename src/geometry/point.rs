@@ -7,8 +7,6 @@ use std::cmp::Ordering;
 use std::fmt;
 use std::hash;
 
-#[cfg(feature = "rkyv-serialize")]
-use rkyv::bytecheck;
 #[cfg(feature = "serde-serialize-no-std")]
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
@@ -42,18 +40,17 @@ use std::mem::MaybeUninit;
 /// of said transformations for details.
 #[repr(C)]
 #[derive(Clone)]
-#[cfg_attr(feature = "rkyv-serialize", derive(bytecheck::CheckBytes))]
 #[cfg_attr(
     feature = "rkyv-serialize-no-std",
-    derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize),
-    archive(
-        as = "OPoint<T::Archived, D>",
-        bound(archive = "
-        T: rkyv::Archive,
-        T::Archived: Scalar,
-        OVector<T, D>: rkyv::Archive<Archived = OVector<T::Archived, D>>,
-        DefaultAllocator: Allocator<D>,
-    ")
+    derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, rkyv::Portable, bytecheck::CheckBytes),
+    rkyv(
+        as = OPoint<T::Archived, D>,
+        archive_bounds(
+            T: rkyv::Archive,
+            T::Archived: Scalar,
+            OVector<T, D>: rkyv::Archive<Archived = OVector<T::Archived, D>>,
+            <DefaultAllocator as Allocator<D>>::Buffer<T::Archived>: rkyv::Portable,
+        )
     )
 )]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]

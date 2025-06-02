@@ -20,9 +20,6 @@ use crate::geometry::{AbstractRotation, Point, Translation};
 #[cfg(doc)]
 use crate::{Isometry3, Quaternion, Vector3, Vector4};
 
-#[cfg(feature = "rkyv-serialize")]
-use rkyv::bytecheck;
-
 /// A direct isometry, i.e., a rotation followed by a translation (aka. a rigid-body motion).
 ///
 /// This is also known as an element of a Special Euclidean (SE) group.
@@ -75,17 +72,16 @@ use rkyv::bytecheck;
                        Owned<T, Const<D>>: Deserialize<'de>,
                        T: Scalar"))
 )]
-#[cfg_attr(feature = "rkyv-serialize", derive(bytecheck::CheckBytes))]
 #[cfg_attr(
     feature = "rkyv-serialize-no-std",
-    derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize),
-    archive(
-        as = "Isometry<T::Archived, R::Archived, D>",
-        bound(archive = "
-        T: rkyv::Archive,
-        R: rkyv::Archive,
-        Translation<T, D>: rkyv::Archive<Archived = Translation<T::Archived, D>>
-    ")
+    derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, rkyv::Portable, bytecheck::CheckBytes),
+    rkyv(
+        as = Isometry<T::Archived, R::Archived, D>,
+        archive_bounds(
+            T: rkyv::Archive,
+            R: rkyv::Archive,
+            Translation<T, D>: rkyv::Archive<Archived = Translation<T::Archived, D>>
+        )
     )
 )]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
