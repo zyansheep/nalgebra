@@ -8,15 +8,16 @@ use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
 use std::mem;
 
+// #[cfg(feature = "rkyv-serialize-no-std")]
+// use rkyv::bytecheck::{self, CheckBytes};
+
 #[cfg(feature = "serde-serialize-no-std")]
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 #[cfg(feature = "rkyv-serialize-no-std")]
 use super::rkyv_wrappers::CustomPhantom;
-#[cfg(feature = "rkyv-serialize")]
-use rkyv::bytecheck;
 #[cfg(feature = "rkyv-serialize-no-std")]
-use rkyv::{with::With, Archive, Archived};
+use rkyv::{with::ArchiveWith, Archive};
 
 use simba::scalar::{ClosedAddAssign, ClosedMulAssign, ClosedSubAssign, Field, SupersetOf};
 use simba::simd::SimdPartialOrd;
@@ -160,17 +161,16 @@ pub type MatrixCross<T, R1, C1, R2, C2> =
 #[derive(Clone, Copy)]
 #[cfg_attr(
     feature = "rkyv-serialize-no-std",
-    derive(Archive, rkyv::Serialize, rkyv::Deserialize),
-    archive(
-        as = "Matrix<T::Archived, R, C, S::Archived>",
-        bound(archive = "
-        T: Archive,
-        S: Archive,
-        With<PhantomData<(T, R, C)>, CustomPhantom<(Archived<T>, R, C)>>: Archive<Archived = PhantomData<(Archived<T>, R, C)>>
-    ")
+    derive(Archive, rkyv::Serialize, rkyv::Deserialize, rkyv::Portable, bytecheck::CheckBytes),
+    rkyv(
+        as = Matrix<T::Archived, R, C, S::Archived>,
+        archive_bounds(
+            T: Archive,
+            S: Archive,
+            CustomPhantom<(<T as Archive>::Archived, R, C)>: ArchiveWith<PhantomData<(T, R, C)>, Archived = PhantomData<(<T as Archive>::Archived, R, C)>>,
+        ),
     )
 )]
-#[cfg_attr(feature = "rkyv-serialize", derive(bytecheck::CheckBytes))]
 pub struct Matrix<T, R, C, S> {
     /// The data storage that contains all the matrix components. Disappointed?
     ///
@@ -207,7 +207,7 @@ pub struct Matrix<T, R, C, S> {
     //       of the `RawStorage` trait. However, because we don't have
     //       specialization, this is not possible because these `T, R, C`
     //       allows us to desambiguate a lot of configurations.
-    #[cfg_attr(feature = "rkyv-serialize-no-std", with(CustomPhantom<(T::Archived, R, C)>))]
+    #[cfg_attr(feature = "rkyv-serialize-no-std", rkyv(with = CustomPhantom<(<T as Archive>::Archived, R, C)>))]
     _phantoms: PhantomData<(T, R, C)>,
 }
 

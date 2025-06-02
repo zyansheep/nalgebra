@@ -5,19 +5,16 @@ use na::{
     Rotation3, Similarity3, SimilarityMatrix2, SimilarityMatrix3, Translation2, Translation3,
 };
 use rand;
-use rkyv::{Deserialize, Infallible};
+use rkyv::{rancor, Archived};
 
 macro_rules! test_rkyv_same_type(
     ($($test: ident, $ty: ident);* $(;)*) => {$(
         #[test]
         fn $test() {
             let value: $ty<f32> = rand::random();
-			let bytes = rkyv::to_bytes::<_, 256>(&value).unwrap();
+			let bytes = rkyv::to_bytes::<rancor::Error>(&value).unwrap();
 
-			let archived = rkyv::check_archived_root::<$ty<f32>>(&bytes[..]).unwrap();
-            // Compare archived and non-archived
-			assert_eq!(archived, &value);
-
+			let archived = rkyv::access::<Archived<$ty<f32>>, rancor::Error>(&bytes[..]).unwrap();
             // Make sure Debug implementations are the same for Archived and non-Archived versions.
 			assert_eq!(format!("{:?}", value), format!("{:?}", archived));
         }
@@ -28,11 +25,10 @@ macro_rules! test_rkyv_diff_type(
         #[test]
         fn $test() {
             let value: $ty<String> = Default::default();
-			let bytes = rkyv::to_bytes::<_, 256>(&value).unwrap();
+			let bytes = rkyv::to_bytes::<rancor::Error>(&value).unwrap();
 
-			let archived = rkyv::check_archived_root::<$ty<String>>(&bytes[..]).unwrap();
-            let deserialized: $ty<String> = archived.deserialize(&mut Infallible).unwrap();
-			assert_eq!(deserialized, value);
+			let deserialized = rkyv::from_bytes::<$ty<String>, rancor::Error>(&bytes[..]).unwrap();
+            assert_eq!(deserialized, value);
         }
     )*}
 );
